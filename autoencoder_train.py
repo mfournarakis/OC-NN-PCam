@@ -234,7 +234,6 @@ def main():
 
             if args.print_progress:
            
-    
                 sys.stdout.write('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\r'
                 .format(epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
@@ -242,7 +241,6 @@ def main():
 
             n_iter += 1
 
-            break
 
         #Reconstruction test
         if epoch % args.recon_epochs == 0:
