@@ -82,7 +82,7 @@ def reconstructionTest(args, model, dataloader, epoch, path):
     output = torch.cat((targets, data), dim=0)
 
     #Save
-    filename = path + "/Reconstruction_Epoch{:04d}".format(epoch)
+    filename = path + "/Reconstruction_Epoch_{:03d}.png".format(epoch)
     torchvision.utils.save_image(
         output.cpu(), filename, nrow=output.shape[0] // 2, padding=5)
 
@@ -135,11 +135,11 @@ def main():
     parser.add_argument(
         '--save',
         type=int,
-        default=5,
+        default=10,
         metavar='N',
         help='save model every this number of epochs (Default=5)')
     parser.add_argument(
-        '--recon_epochs',
+        '--recon-epochs',
         type=int,
         default=5,
         metavar='N',
@@ -157,6 +157,12 @@ def main():
         default='test',
         help=
         'name of run (default=test')
+    parser.add_argument(
+        '--print-progress',
+        action='store_true',
+        default='False',
+        help=
+        'do not print Mini-Batch-loss')
 
     args = parser.parse_args()
     #Print arguments
@@ -167,7 +173,7 @@ def main():
     sys.stdout.flush()
 
     #Dateset root:
-    train_rootdir = './pcamv1/camelyonpatch_level_2_split_train_normal.h5'
+    train_rootdir = './pcamv1/camelyonpatch_level_2_split_train_normal_subsample.h5'
 
     #Define Dataloader
     training_transformations = transforms.Compose([
@@ -209,7 +215,7 @@ def main():
         sys.stdout.write('Starting epoch {}/{} \n '.format(epoch, args.epochs))
         sys.stdout.flush()
 
-        for batch_idx, data in tqdm(enumerate(train_loader)):
+        for batch_idx, data in enumerate(train_loader):
             model.train()
 
             #Get output
@@ -226,10 +232,20 @@ def main():
             #Log into write
             writer.add_scalar('Mini-Batch-loss', loss.item(), n_iter)
 
+            if args.print_progress:
+           
+    
+                sys.stdout.write('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\r'
+                .format(epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
+                sys.stdout.flush()
+
             n_iter += 1
 
+            break
+
         #Reconstruction test
-        if epoch % args.recon_epoch == 0:
+        if epoch % args.recon_epochs == 0:
             reconstructionTest(args, model, eval_loader, epoch, logging_dir)
 
         if epoch % args.save == 0:
