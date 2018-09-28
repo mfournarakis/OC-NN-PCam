@@ -403,7 +403,15 @@ def main():
             r_scalar = float(
                 np.percentile(train_score.detach().numpy(), q=100 * args.nu))
 
-            if batch_idx % args.log_progress:
+            sys.stdout.write(
+                'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} , r={:.4f}\r'
+                .format(epoch, batch_idx * len(data),
+                        len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader), loss.item(),
+                        r_scalar))
+            sys.stdout.flush()
+
+            if batch_idx % args.log_progress == 0 :
 
                 #Log mini-batch loss
                 writer.add_scalar('Mini-Batch-loss', loss.item(), n_iter)
@@ -422,15 +430,7 @@ def main():
                         'Valid Normal': normal_mean,
                         'Valid Abnormal': abnormal_mean
                     }, n_iter)
-
-                sys.stdout.write(
-                    'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} , r={:.4f}\r'
-                    .format(epoch, batch_idx * len(data),
-                            len(train_loader.dataset),
-                            100. * batch_idx / len(train_loader), loss.item(),
-                            r_scaler))
-                sys.stdout.flush()
-
+              
             n_iter += 1
 
 
