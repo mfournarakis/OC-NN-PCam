@@ -27,9 +27,15 @@ from tqdm   import tqdm
 
 
 def reconstruction_loss(args, x, y):
+    #Define Reconstruction Loss
+
+    #L1 difference
     L1_loss = torch.nn.L1Loss(reduction='elementwise_mean')
 
-    ssim_loss = pytorch_ssim.SSIM(window_size=args.window_size)  #Average
+    #SSIM index
+    ssim_loss = pytorch_ssim.SSIM(window_size=args.window_size)  
+
+    #Final loss is convex combination of the above
     loss = (1-args.alpha) * L1_loss(x,y) + \
             args.alpha * torch.clamp( (1-ssim_loss(x,y))/2,0,1)
 
@@ -66,7 +72,7 @@ def reconstructionTest(args, model, dataloader, epoch, path):
 
     Args:
         args:           arguments wrapper
-        model:
+        model:          pytorch mode;
         dataloader:     pytorch dataloader
 
     Output:
@@ -165,6 +171,7 @@ def main():
         'do not print Mini-Batch-loss')
 
     args = parser.parse_args()
+
     #Print arguments
     for arg in vars(args):
         sys.stdout.write('{} = {} \n'.format(arg, getattr(args, arg)))
@@ -175,7 +182,7 @@ def main():
     #Dateset root:
     train_rootdir = './pcamv1/camelyonpatch_level_2_split_train_normal_subsample.h5'
 
-    #Define Dataloader
+    #Define Training data transformations
     training_transformations = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Pad(96, padding_mode='reflect'),
@@ -184,6 +191,7 @@ def main():
         transforms.ToTensor()
     ])
 
+    #Build DataLoaders
     train_loader = DataLoader(
         TrainingDataset(train_rootdir, transform=training_transformations),
         batch_size=args.batch_size,
@@ -203,6 +211,7 @@ def main():
     if not os.path.exists(logging_dir):
         os.makedirs(logging_dir)
 
+    #Create Summary class for TensorboardX
     writer = SummaryWriter(
         logging_dir, comment='AutoEncoder for compressed representation')
 
@@ -217,8 +226,7 @@ def main():
 
         for batch_idx, data in enumerate(train_loader):
             model.train()
-
-            #Get output
+            #Get output (forward pass)
             target = model(data)
 
             #Optimise
@@ -229,9 +237,10 @@ def main():
             loss.backward()
             optimizer.step()
 
-            #Log into write
+            #Log into writer
             writer.add_scalar('Mini-Batch-loss', loss.item(), n_iter)
 
+            #Print progress
             if args.print_progress:
            
                 sys.stdout.write('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\r'
@@ -246,6 +255,7 @@ def main():
         if epoch % args.recon_epochs == 0:
             reconstructionTest(args, model, eval_loader, epoch, logging_dir)
 
+        #Save model
         if epoch % args.save == 0:
             save_model(args, model, epoch)
 
