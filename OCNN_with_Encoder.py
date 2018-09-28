@@ -163,9 +163,6 @@ def validation_scores(model, dataloader, w1, w2, r):
 
             normal_results.append(score[index<1].tolist())
             abnormal_results.append(score[index>0].tolist())
-
-            if batch_idx % 20 == 0 and batch_idx >0 : break
-
     
     #Combine all results in one list and return the mean and std
     normal_results = list(itertools.chain(*normal_results))
@@ -196,8 +193,6 @@ def validation_roc(model, dataloader, w1, w2, r, path, epoch):
             scores.append(score.tolist())
 
             labels.append(label.numpy().flatten().tolist())
-
-            if batch_idx % 20 == 0 and batch_idx >0 : break
 
     #Get roc_curve
     scores= list(itertools.chain(*scores))
@@ -249,23 +244,23 @@ def createDalaLoaders(args,path):
         batch_size=args.batch_size,
         shuffle=True)
 
-    valid_x = os.path.join(path, 'camelyonpatch_level_2_split_valid_x.h5')
-    valid_y = os.path.join(path, 'camelyonpatch_level_2_split_valid_y.h5')
+    valid_x = os.path.join(path, 'camelyonpatch_level_2_split_valid_x_subsample.h5')
+    valid_y = os.path.join(path, 'camelyonpatch_level_2_split_valid_y_subsample.h5')
 
     valid_loader = DataLoader(
         ValidationDataset(valid_x, valid_y, transform=transforms.ToTensor()),
         batch_size=args.eval_batch_size,
         shuffle=False)
 
-    test_x = os.path.join(path, 'camelyonpatch_level_2_split_test_x.h5')
-    test_y = os.path.join(path, 'camelyonpatch_level_2_split_test_y.h5')
+    # test_x = os.path.join(path, 'camelyonpatch_level_2_split_test_x.h5')
+    # test_y = os.path.join(path, 'camelyonpatch_level_2_split_test_y.h5')
 
-    test_loader = DataLoader(
-        ValidationDataset(test_x, test_y, transform=transforms.ToTensor()),
-        batch_size=args.eval_batch_size,
-        shuffle=True)
+    # test_loader = DataLoader(
+    #     ValidationDataset(test_x, test_y, transform=transforms.ToTensor()),
+    #     batch_size=args.eval_batch_size,
+    #     shuffle=True)
 
-    return train_loader, valid_loader, test_loader
+    return train_loader, valid_loader
 
 
 def main():
@@ -362,7 +357,7 @@ def main():
 
     #Get DataLoaders:
 
-    train_loader, valid_loader, test_loader = createDalaLoaders(args,'./pcamv1')
+    train_loader, valid_loader  = createDalaLoaders(args,'./pcamv1')
 
     #Create output/logging file
 
