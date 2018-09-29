@@ -158,34 +158,34 @@ def main():
     n_iter = 0
     r_scalar = args.r
 
-    #Train
-    for epoch in range(1, args.epochs + 1):
-        sys.stdout.write('Starting epoch {}/{} \n '.format(epoch, args.epochs))
-        sys.stdout.flush()
+    # #Train
+    # for epoch in range(1, args.epochs + 1):
+    #     sys.stdout.write('Starting epoch {}/{} \n '.format(epoch, args.epochs))
+    #     sys.stdout.flush()
 
-        optimizer.zero_grad()
+    #     optimizer.zero_grad()
 
-        #Get learning objective
-        loss = ocnn_objective(data_train, args.nu, w1, w2, r_scalar)
+    #     #Get learning objective
+    #     loss = ocnn_objective(data_train, args.nu, w1, w2, r_scalar)
 
-        loss.backward()
-        #Step1 of optimisation: Optimise w,V parameters
+    #     loss.backward()
+    #     #Step1 of optimisation: Optimise w,V parameters
 
-        optimizer.step()
+    #     optimizer.step()
 
-        # Step2 of optimisation: Optimise bias r
+    #     # Step2 of optimisation: Optimise bias r
 
-        train_score = nnScore(data_train, w1, w2)
-        r_scalar = float(
-            np.percentile(train_score.detach().numpy(), q=100 * args.nu))
+    #     train_score = nnScore(data_train, w1, w2)
+    #     r_scalar = float(
+    #         np.percentile(train_score.detach().numpy(), q=100 * args.nu))
 
-        print('epoch:{}, Loss:{:.6f}, r={:.4f}'.format(epoch, loss.item(),
-                                                       r_scalar))
-        n_iter += 1
+    #     print('epoch:{}, Loss:{:.6f}, r={:.4f}'.format(epoch, loss.item(),
+    #                                                    r_scalar))
+    #     n_iter += 1
 
-    #Estimate scores for training and test data
+    # #Estimate scores for training and test data
 
-    #Get best estimate for bias
+    # #Get best estimate for bias
     rstar = r_scalar
 
     #Calculate the score function for train (positive) and test(negative)
