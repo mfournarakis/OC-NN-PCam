@@ -72,7 +72,7 @@ def reconstructionTest(args, model, dataloader, epoch, path):
 
     Args:
         args:           arguments wrapper
-        model:          pytorch mode;
+        model:          pytorch model
         dataloader:     pytorch dataloader
 
     Output:
@@ -84,10 +84,10 @@ def reconstructionTest(args, model, dataloader, epoch, path):
             targets = model(data)
             break
 
-    #Concatenate GT
+    #Concatenate ground truth
     output = torch.cat((targets, data), dim=0)
 
-    #Save
+    #Save image to file
     filename = path + "/Reconstruction_Epoch_{:03d}.png".format(epoch)
     torchvision.utils.save_image(
         output.cpu(), filename, nrow=output.shape[0] // 2, padding=5)
@@ -97,9 +97,10 @@ def save_model(args, model, epoch):
     """
     saves a checkpoint so that model weight can later be used for inference
     Args:
-    model:  pytorch model
+        model:  pytorch model
     """
     path = './model_' + args.name
+    #Create path if it doesn't exists
     if not os.path.exists(path):
         os.mkdir(path)
     torch.save(model.state_dict(),
@@ -172,14 +173,14 @@ def main():
 
     args = parser.parse_args()
 
-    #Print arguments
+    #Print arguments to file
     for arg in vars(args):
         sys.stdout.write('{} = {} \n'.format(arg, getattr(args, arg)))
         sys.stdout.flush()
     sys.stdout.write('Random torch seed:{}\n'.format(torch.initial_seed()))
     sys.stdout.flush()
 
-    #Dateset root:
+    #Dataset root directory
     train_rootdir = './pcamv1/camelyonpatch_level_2_split_train_normal_subsample.h5'
 
     #Define Training data transformations
@@ -229,11 +230,13 @@ def main():
             #Get output (forward pass)
             target = model(data)
 
-            #Optimise
+            #Set optimiser gradient to zero
             optimizer.zero_grad()
 
             #Get reconstruction loss:
             loss = reconstruction_loss(args, data, target)
+
+            #Optimise
             loss.backward()
             optimizer.step()
 

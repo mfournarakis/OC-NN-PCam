@@ -79,13 +79,6 @@ class ValidationDataset(Dataset):
 
         return (image, label)
 
-
-def im2vec(x, model):
-    #Get encoder representation of input image using encoder (model)
-    model.eval()
-    return model.encoder(x)
-
-
 def ocnn_objective(X, nu, w1, w2, R):
     #learning object - loss function
     W = w1
@@ -98,18 +91,6 @@ def ocnn_objective(X, nu, w1, w2, R):
 
     return term1 + term2 + term3 + term4
 
-
-def forward_propagation(x, w1, w2):
-    """
-    Forward propagation using OC-NN
-    """
-    hidden = torch.matmul(x, w1)
-
-    yhat = torch.matmu(hidden, w2)
-
-    return yhat
-
-
 def nnScore(X, W, V):
     #Score function
     return torch.matmul(torch.sigmoid(torch.matmul(X, W)), V)
@@ -121,19 +102,25 @@ def evaluate_training_score(model, dataloader, w1, w2, r):
 
     model.eval()
     results = []
+
     with torch.no_grad():
         for batch_idx, data in enumerate(dataloader):
 
             #Get feature vector from pre-trained encoder
             feature_vector = model.encoder(data)  #[N,512,1,1]
 
+            # Reshape
             feature_vector = feature_vector.view(-1, 512)  # [N,512]
 
+            # Get Score
             score = nnScore(feature_vector, w1, w2).numpy().flatten() - r
             results.append(score.tolist())
 
+            #Break after 10 batches
+
             if batch_idx % 10 == 0 and batch_idx >0 : break
 
+    # Flatten list
     results = list(itertools.chain(*results))
     results = np.array(results)
 
@@ -155,8 +142,10 @@ def validation_scores(model, dataloader, w1, w2, r):
             #Get feature vector from pre-trained encoder
             feature_vector = model.encoder(data)  #[N,512,1,1]
 
+            # Reshape
             feature_vector = feature_vector.view(-1, 512)  # [N,512]
 
+            # Get the scores
             score = nnScore(feature_vector, w1, w2).numpy().flatten() - r
 
             index= label.numpy()
@@ -164,9 +153,10 @@ def validation_scores(model, dataloader, w1, w2, r):
             normal_results.append(score[index<1].tolist())
             abnormal_results.append(score[index>0].tolist())
     
-    #Combine all results in one list and return the mean and std
+    #Combine all results in one list and return the mean 
     normal_results = list(itertools.chain(*normal_results))
     abnormal_results = list(itertools.chain(*abnormal_results)) 
+
     normal_results = np.array(normal_results)
     abnormal_results = np.array(abnormal_results)
 
@@ -182,35 +172,40 @@ def validation_roc(model, dataloader, w1, w2, r, path, epoch):
 
     with torch.no_grad():
         for batch_idx, (data, label) in enumerate(dataloader):
+
             #Get feature vector from pre-trained encoder
             feature_vector = model.encoder(data)  #[N,512,1,1]
 
+            # Reshape
             feature_vector = feature_vector.view(-1, 512)  # [N,512]
 
-            #Get score
+            #Get scores
             score = nnScore(feature_vector, w1, w2).numpy().flatten() - r
 
             scores.append(score.tolist())
 
             labels.append(label.numpy().flatten().tolist())
 
-    #Get roc_curve
     scores= list(itertools.chain(*scores))
     labels = list (itertools.chain(*labels))
 
+    # Get ROC Curve
     fpr, tpr, thr = roc_curve(labels, scores, pos_label=1)
+    # Get ROC AUC
     roc_auc = auc(fpr, tpr)
 
     #Plot ROC figure
 
     plt.figure()
     lw = 2
+
     plt.plot(
         fpr,
         tpr,
         color='darkorange',
         lw=lw,
         label='ROC curve (area = %0.2f)' % roc_auc)
+
     plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -227,7 +222,7 @@ def validation_roc(model, dataloader, w1, w2, r, path, epoch):
 
 
 def createDalaLoaders(args,path):
-    #Define Dataloader
+    #Define transformation for training set
     training_transformations = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Pad(96, padding_mode='reflect'),
@@ -236,29 +231,26 @@ def createDalaLoaders(args,path):
         transforms.ToTensor()
     ])
 
+    #Training dataset directory
     train_dir = os.path.join(
         path, 'camelyonpatch_level_2_split_train_normal_subsample.h5')
 
+    # Define train loader 
     train_loader = DataLoader(
         TrainingDataset(train_dir, transform=training_transformations),
         batch_size=args.batch_size,
         shuffle=True)
 
+    # validation sets root dir
     valid_x = os.path.join(path, 'camelyonpatch_level_2_split_valid_x_subsample.h5')
     valid_y = os.path.join(path, 'camelyonpatch_level_2_split_valid_y_subsample.h5')
+
+    # Define validation dataloader
 
     valid_loader = DataLoader(
         ValidationDataset(valid_x, valid_y, transform=transforms.ToTensor()),
         batch_size=args.eval_batch_size,
         shuffle=False)
-
-    # test_x = os.path.join(path, 'camelyonpatch_level_2_split_test_x.h5')
-    # test_y = os.path.join(path, 'camelyonpatch_level_2_split_test_y.h5')
-
-    # test_loader = DataLoader(
-    #     ValidationDataset(test_x, test_y, transform=transforms.ToTensor()),
-    #     batch_size=args.eval_batch_size,
-    #     shuffle=True)
 
     return train_loader, valid_loader
 
@@ -324,6 +316,10 @@ def main():
 
     args = parser.parse_args()
 
+    # Set manual seed
+    RANDOM_SEED = 42
+    torch.manual_seed(RANDOM_SEED)
+
     #Print arguments
     for arg in vars(args):
         sys.stdout.write('{} = {} \n'.format(arg, getattr(args, arg)))
@@ -331,12 +327,10 @@ def main():
     sys.stdout.write('Random torch seed:{}\n'.format(torch.initial_seed()))
     sys.stdout.flush()
 
-    RANDOM_SEED = 42
-    torch.manual_seed(RANDOM_SEED)
-
     #Load pre-trained encoder
     encoder_weights_roodir = './model_run_1621_lr=1e-4_dropout=0/checkpoint_epoch_50.pt'
 
+    # Create model
     autoencoder = AutoEncoder(0)
 
     #Load weights
@@ -350,23 +344,21 @@ def main():
     w1 = torch.empty(512, args.hidden, dtype=torch.float32, requires_grad=True)
     w2 = torch.empty(args.hidden, 1, dtype=torch.float32, requires_grad=True)
 
+    # Initialise weights with Xavier initialisation
     nn.init.xavier_normal_(w1, gain=1)
     nn.init.xavier_normal_(w2, gain=1)
 
     optimizer = optim.SGD([w1, w2], lr=args.lr, momentum=args.momentum)
 
     #Get DataLoaders:
-
     train_loader, valid_loader  = createDalaLoaders(args,'./pcamv1')
 
     #Create output/logging file
-
     logging_dir = './logs_' + args.name
     if not os.path.exists(logging_dir):
         os.makedirs(logging_dir)
 
     #Create TensorboardX summary
-
     writer = SummaryWriter(logging_dir, comment='One Class Classifier with NN')
 
     #Start training
@@ -383,13 +375,17 @@ def main():
 
         for batch_idx, data in enumerate(train_loader):
             autoencoder.eval()
-            #Get feature vector from pre-trained encoder
+
+            # Get feature vector from pre-trained encoder
             feature_vector = autoencoder.encoder(data)  #[N,512,1,1]
+
+            # Reshape
             feature_vector = feature_vector.view(-1, 512)  # [N,512]
 
+            # Set optimiser gradient to zero
             optimizer.zero_grad()
 
-            #Get learning objective
+            # Get loss
             loss = ocnn_objective(feature_vector, args.nu, w1, w2, r_scalar)
 
             loss.backward()
@@ -411,6 +407,7 @@ def main():
                         r_scalar))
             sys.stdout.flush()
 
+            # Log results 
             if batch_idx % args.log_progress == 0 :
 
                 #Log mini-batch loss

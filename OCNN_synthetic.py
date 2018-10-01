@@ -43,17 +43,6 @@ def ocnn_objective(X, nu, w1, w2, R):
     return term1 + term2 + term3 + term4
 
 
-def forward_propagation(x, w1, w2):
-    """
-    Forward propagation using OC-NN
-    """
-    hidden = torch.matmul(x, w1)
-
-    yhat = torch.matmu(hidden, w2)
-
-    return yhat
-
-
 def nnScore(X, W, V):
     #Score function
 
@@ -65,7 +54,9 @@ def prepare_synthetic_data():
     n_samples = 190
     centers = 1
     num_features = 512
-    #Make Blobs from
+
+    #Make Blobs from sklearn
+
     X, y = make_blobs(
         n_samples=n_samples,
         n_features=num_features,
@@ -148,6 +139,7 @@ def main():
     #Set up optimiser
     optimizer = optim.SGD([w1, w2], lr=args.lr)
 
+    #Get data 
     data_train, label_train, data_test, label_test = prepare_synthetic_data()
     data_train = torch.from_numpy(data_train).float()
     data_test = torch.from_numpy(data_test).float()
@@ -156,39 +148,45 @@ def main():
     sys.stdout.write('Start training\n')
     sys.stdout.flush()
     n_iter = 0
+
+    #Set initial value for 
+
     r_scalar = args.r
 
-    # #Train
-    # for epoch in range(1, args.epochs + 1):
-    #     sys.stdout.write('Starting epoch {}/{} \n '.format(epoch, args.epochs))
-    #     sys.stdout.flush()
+    #Train
+    for epoch in range(1, args.epochs + 1):
+        sys.stdout.write('Starting epoch {}/{} \n '.format(epoch, args.epochs))
+        sys.stdout.flush()
 
-    #     optimizer.zero_grad()
+        #Set optimiser gradient to zero
+        optimizer.zero_grad()
 
-    #     #Get learning objective
-    #     loss = ocnn_objective(data_train, args.nu, w1, w2, r_scalar)
+        # Get loss
+        loss = ocnn_objective(data_train, args.nu, w1, w2, r_scalar)
 
-    #     loss.backward()
-    #     #Step1 of optimisation: Optimise w,V parameters
+        loss.backward()
 
-    #     optimizer.step()
+        #Step1 of optimisation: Optimise w,V parameters
 
-    #     # Step2 of optimisation: Optimise bias r
+        optimizer.step()
 
-    #     train_score = nnScore(data_train, w1, w2)
-    #     r_scalar = float(
-    #         np.percentile(train_score.detach().numpy(), q=100 * args.nu))
+        # Step2 of optimisation: Optimise bias r
 
-    #     print('epoch:{}, Loss:{:.6f}, r={:.4f}'.format(epoch, loss.item(),
-    #                                                    r_scalar))
-    #     n_iter += 1
+        train_score = nnScore(data_train, w1, w2)
+        r_scalar = float(
+            np.percentile(train_score.detach().numpy(), q=100 * args.nu))
 
-    # #Estimate scores for training and test data
+        print('epoch:{}, Loss:{:.6f}, r={:.4f}'.format(epoch, loss.item(),
+                                                       r_scalar))
+        n_iter += 1
 
-    # #Get best estimate for bias
+    # Estimate scores for training and test data
+
+    # Get finale estimate for bias
     rstar = r_scalar
 
     #Calculate the score function for train (positive) and test(negative)
+
     with torch.no_grad():
         arrayTrain = nnScore(data_train, w1, w2)
         arrayTest = nnScore(data_test, w1, w2)
@@ -197,6 +195,7 @@ def main():
     pos_decisionScore = arrayTrain.numpy() - rstar
     neg_decisionScore = arrayTest.numpy() - rstar
 
+    #Save results to file
     np.savetxt(
         'positive_scores.csv', pos_decisionScore.astype(float), delimiter=',')
     np.savetxt(

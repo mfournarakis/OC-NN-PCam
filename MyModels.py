@@ -6,14 +6,14 @@ import torchvision.models as models
 
 class AutoEncoder(nn.Module):
     """
-    Autoencoder module for intepretable transformations
+    AutoEncoder module 
     """
     def __init__(self,dropout_rate):
         super(AutoEncoder, self).__init__()
 
         #Encoder is a RenNet18
         pretrained=models.resnet18(pretrained=True)
-    
+
         pretrained.avgpool=nn.AdaptiveAvgPool2d(1) 
 
         #Remove the last  fc layer
@@ -29,7 +29,7 @@ class AutoEncoder(nn.Module):
     def forward(self,x):
         """
         Args:
-            x:    input 4D Pytorch tensor
+            x:    [N,C,H,W] input 4D Pytorch tensor
         """
         #Compressed representation
 
@@ -44,6 +44,7 @@ class AutoEncoder(nn.Module):
 
         return y
 
+# Create Nearest Neighbour Up-sampling module to be used in the decoder
 
 class NearestUsampling2D(nn.Module):
     def __init__(self,size):
@@ -54,13 +55,13 @@ class NearestUsampling2D(nn.Module):
         return F.interpolate(input, size=self.size,mode='nearest')
 
 
-
+#Set up decoder
 class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
 
         self.decoder=nn.Sequential(
-            #2nd dconv layer
+            #1st dconv layer
             nn.BatchNorm2d(512), # [N,input_dims,1,1]
             NearestUsampling2D((2,2)), # [N,input_dims,2,2]
             nn.Conv2d(512,512,kernel_size=3,stride=1,padding=1), # [N,input_dims,2,2]
